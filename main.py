@@ -35,12 +35,13 @@ def check_cache(items):
         pdf_path = item["path"]
         cache_path = f"{CACHE_DIR}/{key}.txt"
         if os.path.exists(cache_path) and os.path.getmtime(cache_path) > os.path.getmtime(pdf_path):
+            logger.debug(f"Cache for {key} is up to date.")
             continue
+        logger.info(f"Creating cache for {key}...")
         text = make_cache(pdf_path)
         with open(cache_path, "w", encoding="utf-8") as f:
             f.write(text)
-        print(f"Cache for {key} created.")
-    print("All caches are created.")
+    logger.info("All caches are created.")
 
 
 def find_pdf_file(path: str):
@@ -170,6 +171,7 @@ def api_search(self: "Handler"):
         for item in items:
             rows[item["key"]] = item
     rows = list(rows.values())
+    logger.info(f"Found {len(rows)} items in selected collections.")
     rows = fulltext_search(rows, query[0])
     results = []
     for r in rows:
@@ -219,5 +221,7 @@ def main():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.getLogger().setLevel(logging.WARNING)
+    logger.setLevel(logging.INFO)
+    logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
     main()
