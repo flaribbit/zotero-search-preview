@@ -1,11 +1,10 @@
 [project]
 name = "zotero-search-preview"
 version = "0.1.0"
-description = "Add your description here"
+description = "Search and preview Zotero items using a web interface"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.115.11",
     "httpx>=0.28.1",
     "pymupdf>=1.25.4",
     "uvicorn>=0.34.0",
