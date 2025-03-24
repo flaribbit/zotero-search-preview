@@ -33,11 +33,12 @@ def check_cache(items):
     for item in items:
         key = item["key"]
         pdf_path = item["path"]
+        title = item["title"]
         cache_path = f"{CACHE_DIR}/{key}.txt"
         if os.path.exists(cache_path) and os.path.getmtime(cache_path) > os.path.getmtime(pdf_path):
-            logger.debug(f"Cache for {key} is up to date.")
+            logger.debug(f"Cache for [{key}] {title} is up to date.")
             continue
-        logger.info(f"Creating cache for {key}...")
+        logger.info(f"Creating cache for [{key}] {title}...")
         text = make_cache(pdf_path)
         with open(cache_path, "w", encoding="utf-8") as f:
             f.write(text)
@@ -175,10 +176,13 @@ def api_search(self: "Handler"):
     rows = fulltext_search(rows, query[0])
     results = []
     for r in rows:
+        key = r["key"]
         title = r["title"]
         preview = r["preview"]
         path = r["path"]
-        results.append(f'<h3><span class="action" onclick="fetch(\'/open?path={path}\')">打开</span>{title}</h3>')
+        results.append(
+            f'<h3><a class="action" href="zotero://select/library/items/{key}">查看</a><span class="action" onclick="fetch(\'/open?path={path}\')">打开</span>{title}</h3>'
+        )
         results.append("<ul>" + "".join(f"<li>{p}</li>" for p in preview) + "</ul>")
     html = html.replace("{{results}}", "".join(results))
     self.send_response(200)
