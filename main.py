@@ -74,7 +74,7 @@ def get_collections():
     return [{"key": e["key"], "name": e["data"]["name"], "numItems": e["meta"]["numItems"]} for e in res.json()]
 
 
-def fulltext_search(rows: list, query: str) -> list:
+def fulltext_search(rows: list, query: str, ignore_case: bool = False) -> list:
     check_cache(rows)  # Ensure cache is up to date
     res = []
     for row in rows:
@@ -89,7 +89,7 @@ def fulltext_search(rows: list, query: str) -> list:
             text = text.replace("\n", " ")  # Replace newlines with spaces
             text = re.sub(r"\s+", " ", text)  # Normalize whitespace
             preview = []
-            for match in re.finditer(query, text, re.IGNORECASE):
+            for match in re.finditer(query, text, re.IGNORECASE if ignore_case else 0):
                 b = match.start()
                 c = match.end()
                 a = max(0, b - 100)
@@ -120,6 +120,7 @@ def api_root(self: "Handler"):
     </ol>
     <h2>搜索</h2>
     <input type="text" name="q">
+    <label><input type="checkbox" name="i" checked>忽略大小写</label>
   </form>
 </body>
 
@@ -162,6 +163,7 @@ def api_search(self: "Handler"):
     query_dict = parse_qs(self.url.query)
     collections = query_dict.get("c", [])
     query = query_dict.get("q", [])
+    ignore_case = True if query_dict.get("i", [""])[0] == "on" else False
     if not query or not collections:
         self.send_response(400)
         self.end_headers()
@@ -173,7 +175,7 @@ def api_search(self: "Handler"):
             rows[item["key"]] = item
     rows = list(rows.values())
     logger.info(f"Found {len(rows)} items in selected collections.")
-    rows = fulltext_search(rows, query[0])
+    rows = fulltext_search(rows, query[0], ignore_case)
     results = []
     for r in rows:
         key = r["key"]
