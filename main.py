@@ -60,7 +60,14 @@ def get_pdf_files(collection_key: str):
             continue
         pdf_key = e["links"]["attachment"]["href"][-8:]
         pdf_path = find_pdf_file(f"{ZOTERO_PATH}/storage/{pdf_key}")
-        ret.append({"key": e["key"], "title": e["data"]["title"], "path": pdf_path})
+        ret.append(
+            {
+                "key": e["key"],
+                "title": e["data"]["title"],
+                "path": pdf_path,
+                "publication": e["data"].get("publicationTitle", ""),
+            }
+        )
     return ret
 
 
@@ -96,6 +103,8 @@ def fulltext_search(rows: list, query: str, ignore_case: bool = False) -> list:
                 d = min(len(text), c + 100)
                 if len(preview) < PREVIEW_LIMIT:
                     preview.append(text[a:b] + f"<mark>{match.group()}</mark>" + text[c:d])
+                else:
+                    break
             if preview:
                 row["preview"] = preview
                 res.append(row)
@@ -126,11 +135,11 @@ def api_root(self: "Handler"):
 
 </html>"""
     collections = get_collections()
-    items = [
-        f'<li><label><input type="checkbox" name="c" value="{e["key"]}">{e["name"]} ({e["numItems"]})</label></li>'
-        for e in collections
-    ]
-    html = html.replace("{{items}}", "".join(items))
+    items = ""
+    for e in collections:
+        items += "<li><label>"
+        items += f'<input type="checkbox" name="c" value="{e["key"]}">{e["name"]} ({e["numItems"]})</label></li>'
+    html = html.replace("{{items}}", items)
     self.send_response(200)
     self.send_header("Content-type", "text/html")
     self.end_headers()
@@ -168,6 +177,8 @@ def api_search(self: "Handler"):
         self.send_response(400)
         self.end_headers()
         return
+
+    # merge all collections
     rows = {}
     for c in collections:
         items = get_pdf_files(c)
@@ -175,18 +186,19 @@ def api_search(self: "Handler"):
             rows[item["key"]] = item
     rows = list(rows.values())
     logger.info(f"Found {len(rows)} items in selected collections.")
+
     rows = fulltext_search(rows, query[0], ignore_case)
-    results = []
+    results = ""
     for r in rows:
         key = r["key"]
         title = r["title"]
         preview = r["preview"]
+        publication = r["publication"]
         path = r["path"]
-        results.append(
-            f'<h3><a class="action" href="zotero://select/library/items/{key}">查看</a><span class="action" onclick="fetch(\'/open?path={path}\')">打开</span>{title}</h3>'
-        )
-        results.append("<ul>" + "".join(f"<li>{p}</li>" for p in preview) + "</ul>")
-    html = html.replace("{{results}}", "".join(results))
+        results += f'<h3><a class="action" href="zotero://select/library/items/{key}">查看</a><span class="action" onclick="fetch(\'/open?path={path}\')">打开</span>{title}</h3>'
+        results += f"<h4>{publication}</h4>"
+        results += "<ul>" + "".join(f"<li>{p}</li>" for p in preview) + "</ul>"
+    html = html.replace("{{results}}", results)
     self.send_response(200)
     self.send_header("Content-type", "text/html")
     self.end_headers()
