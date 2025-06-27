@@ -1,9 +1,10 @@
 import httpx
 import os
 import re
+import json
 import pymupdf
 import logging
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, quote
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 CACHE_DIR = ".cache"
@@ -11,6 +12,21 @@ PREVIEW_LIMIT = 20
 ZOTERO_PATH = "E:/论文"
 logger = logging.getLogger(__name__)
 client = httpx.Client(base_url="http://127.0.0.1:23119/api/users/0/")
+
+
+def check_config():
+    if not os.path.exists("config.json"):
+        logger.info("config.json not found. Creating a new one.")
+        config = {
+            "version": 1,
+            "zotero_path": "",
+            "port": 8088,
+        }
+        with open("config.json", "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=4)
+        exit(0)
+    with open("config.json", "r", encoding="utf-8") as f:
+        config = json.load(f)
 
 
 def make_cache(pdf_path: str):
@@ -195,7 +211,7 @@ def api_search(self: "Handler"):
         preview = r["preview"]
         publication = r["publication"]
         path = r["path"]
-        results += f'<h3><a class="action" href="zotero://select/library/items/{key}">查看</a><span class="action" onclick="fetch(\'/open?path={path}\')">打开</span>{title}</h3>'
+        results += f'<h3><a class="action" href="zotero://select/library/items/{key}">查看</a><span class="action" onclick="fetch(\'/open?path={quote(path)}\')">打开</span>{title}</h3>'
         results += f"<h4>{publication}</h4>"
         results += "<ul>" + "".join(f"<li>{p}</li>" for p in preview) + "</ul>"
     html = html.replace("{{results}}", results)
@@ -231,7 +247,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     address = "127.0.0.1"
-    port = 8080
+    port = 8088
     logger.info(f"Starting server on {address}:{port}")
     logger.info(f">>> http://127.0.0.1:{port}")
     server = HTTPServer((address, port), Handler)
