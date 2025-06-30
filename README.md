@@ -30,4 +30,4 @@ uv run main.py
 
 `uv` will automatically create a virtual environment and install all required dependencies on first run.
 
-Now you can access the application in your web browser: http://127.0.0.1:8080
+Now you can access the application in your web browser: http://127.0.0.1:8088
