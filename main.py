@@ -6,8 +6,10 @@ import pymupdf
 import logging
 from urllib.parse import urlparse, parse_qs, quote
 from http.server import HTTPServer, BaseHTTPRequestHandler
+import shutil
 
 CACHE_DIR = ".cache"
+EXPORT_DIR = "export"
 PREVIEW_LIMIT = 20
 ZOTERO_PATH = "E:/论文"
 logger = logging.getLogger(__name__)
@@ -46,6 +48,8 @@ def make_cache(pdf_path: str):
 def check_cache(items):
     if not os.path.exists(CACHE_DIR):
         os.mkdir(CACHE_DIR)
+    if not os.path.exists(EXPORT_DIR):
+        os.mkdir(EXPORT_DIR)
     for item in items:
         key = item["key"]
         pdf_path = item["path"]
@@ -211,7 +215,7 @@ def api_search(self: "Handler"):
         preview = r["preview"]
         publication = r["publication"]
         path = r["path"]
-        results += f'<h3><a class="action" href="zotero://select/library/items/{key}">查看</a><span class="action" onclick="fetch(\'/open?path={quote(path)}\')">打开</span>{title}</h3>'
+        results += f'<h3><a class="action" href="zotero://select/library/items/{key}">查看</a><span class="action" onclick="fetch(\'/open?path={quote(path)}\')">打开</span><a class="action" onclick="fetch(\'/export?path={quote(path)}\')">导出</a>{title}</h3>'
         results += f"<h4>{publication}</h4>"
         results += "<ul>" + "".join(f"<li>{p}</li>" for p in preview) + "</ul>"
     html = html.replace("{{results}}", results)
@@ -225,7 +229,20 @@ def api_open_file(self: "Handler"):
     query_dict = parse_qs(self.url.query)
     file_path = query_dict.get("path", None)
     if file_path:
-        os.startfile(file_path[0])
+        file_path = file_path[0]
+        logger.info(f"Opening file: {file_path}")
+        os.startfile(file_path)
+    self.send_response(200)
+    self.end_headers()
+
+
+def api_export_file(self: "Handler"):
+    query_dict = parse_qs(self.url.query)
+    file_path = query_dict.get("path", None)
+    if file_path:
+        file_path = file_path[0]
+        logger.info(f"Exporting file: {file_path}")
+        shutil.copy(file_path, EXPORT_DIR)
     self.send_response(200)
     self.end_headers()
 
@@ -240,6 +257,8 @@ class Handler(BaseHTTPRequestHandler):
             api_search(self)
         elif path == "/open":
             api_open_file(self)
+        elif path == "/export":
+            api_export_file(self)
 
     def log_message(self, format, *args):
         logger.info(format, *args)
