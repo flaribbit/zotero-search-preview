@@ -206,6 +206,7 @@ def api_search(self: "Handler"):
 
 <body>
   <h2>搜索结果</h2>
+  <p><span class="action" onclick="fetch('/open?path={{export_dir}}')"">打开导出目录</span></p>
   {{results}}
 </body>
 
@@ -239,9 +240,11 @@ def api_search(self: "Handler"):
         preview = r["preview"]
         publication = r["publication"]
         path = r["path"]
-        results += f'<h3><a class="action" href="zotero://select/library/items/{key}">查看</a><span class="action" onclick="fetch(\'/open?path={quote(path)}\')">打开</span><a class="action" onclick="fetch(\'/export?path={quote(path)}\')">导出</a>{title}</h3>'
+        results += f"<h3>{title}</h3>"
         results += f"<h4>{publication}</h4>"
+        results += f'<a class="action" href="zotero://select/library/items/{key}">查看</a><span class="action" onclick="fetch(\'/open?path={quote(path)}\')">打开</span><span class="action" onclick="fetch(\'/export?path={quote(path)}\')">导出</span>'
         results += "<ul>" + "".join(f"<li>{p}</li>" for p in preview) + "</ul>"
+    html = html.replace("{{export_dir}}", config["export_dir"])
     html = html.replace("{{results}}", results)
     self.send_response(200)
     self.send_header("Content-type", "text/html")
