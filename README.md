@@ -3,6 +3,7 @@
 Zotero is good. The search function of Zotero is good. But it doesn't show the preview of the search result. See:
 
 - https://forums.zotero.org/discussion/104137/feature-request-search-preview
+- https://forums.zotero.org/discussion/92598/feature-request-show-preview-of-results-when-searching-within-indexed-content
 - https://forums.zotero.org/discussion/87897/where-is-the-preview-of-the-search-results
 - https://forums.zotero.org/discussion/47283/preview-pdfs-in-full-text-search
 
