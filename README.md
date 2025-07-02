@@ -10,6 +10,9 @@ So I decide to make my own search tool for Zotero. This tool will show the previ
 
 ## Features
 - Search pdf files by regex
+- Multiple queries separated by `&&`
+  - For example: `(DQN|DDPG)&&dual`
+- Search in selected collections
 - Annotaions in the pdf files are included in the search
 - Highlight the matched text in the preview
 - Open the pdf file with default pdf viewer
