@@ -74,7 +74,7 @@ def check_cache(items):
         text = make_cache(pdf_path)
         with open(cache_path, "w", encoding="utf-8") as f:
             f.write(text)
-    logger.info("All caches are created.")
+    logger.info("All caches are up to date.")
 
 
 def find_pdf_file(path: str):
@@ -82,6 +82,7 @@ def find_pdf_file(path: str):
     for e in os.listdir(path):
         if os.path.splitext(e)[1] == ".pdf":
             return f"{path}/{e}"
+    return None
 
 
 def get_pdf_files(collection_key: str):
@@ -93,10 +94,14 @@ def get_pdf_files(collection_key: str):
             continue
         pdf_key = e["links"]["attachment"]["href"][-8:]
         pdf_path = find_pdf_file(f"{zotero_path}/storage/{pdf_key}")
+        title = e["data"]["title"]
+        if not pdf_path:
+            logger.warning(f"PDF file of {title} not found. Skipping.")
+            continue
         ret.append(
             {
                 "key": e["key"],
-                "title": e["data"]["title"],
+                "title": title,
                 "path": pdf_path,
                 "publication": e["data"].get("publicationTitle", ""),
             }
