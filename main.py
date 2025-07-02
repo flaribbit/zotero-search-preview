@@ -8,27 +8,37 @@ from urllib.parse import urlparse, parse_qs, quote
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import shutil
 
-CACHE_DIR = ".cache"
-EXPORT_DIR = "export"
-PREVIEW_LIMIT = 20
-ZOTERO_PATH = "E:/论文"
+config = {}
 logger = logging.getLogger(__name__)
 client = httpx.Client(base_url="http://127.0.0.1:23119/api/users/0/")
 
 
 def check_config():
+    global config
+    logger.info("Checking config.json...")
     if not os.path.exists("config.json"):
         logger.info("config.json not found. Creating a new one.")
         config = {
             "version": 1,
-            "zotero_path": "",
+            "zotero_path": "[TODO] Put your Zotero data path here",
+            "cache_dir": ".cache",
+            "export_dir": "export",
+            "address": "127.0.0.1",
             "port": 8088,
+            "preview_length": 200,
+            "preview_limit": 20,
         }
         with open("config.json", "w", encoding="utf-8") as f:
             json.dump(config, f, indent=4)
+        logger.info("Please edit config.json to set your Zotero data path then restart the server.")
+        logger.info("Exiting...")
         exit(0)
     with open("config.json", "r", encoding="utf-8") as f:
         config = json.load(f)
+    if not os.path.exists(config["zotero_path"]):
+        logger.error("Zotero path does not exist. Please edit config.json.")
+        logger.error("Hint: It should be something like 'C:/Users/YourUsername/Zotero' on Windows.")
+        exit(1)
 
 
 def make_cache(pdf_path: str):
@@ -46,15 +56,17 @@ def make_cache(pdf_path: str):
 
 
 def check_cache(items):
-    if not os.path.exists(CACHE_DIR):
-        os.mkdir(CACHE_DIR)
-    if not os.path.exists(EXPORT_DIR):
-        os.mkdir(EXPORT_DIR)
+    cache_dir = config["cache_dir"]
+    export_dir = config["export_dir"]
+    if not os.path.exists(cache_dir):
+        os.mkdir(cache_dir)
+    if not os.path.exists(export_dir):
+        os.mkdir(export_dir)
     for item in items:
         key = item["key"]
         pdf_path = item["path"]
         title = item["title"]
-        cache_path = f"{CACHE_DIR}/{key}.txt"
+        cache_path = f"{cache_dir}/{key}.txt"
         if os.path.exists(cache_path) and os.path.getmtime(cache_path) > os.path.getmtime(pdf_path):
             logger.debug(f"Cache for [{key}] {title} is up to date.")
             continue
@@ -73,13 +85,14 @@ def find_pdf_file(path: str):
 
 
 def get_pdf_files(collection_key: str):
+    zotero_path = config["zotero_path"]
     res = client.get(f"collections/{collection_key}/items")
     ret = []
     for e in res.json():
         if "attachment" not in e["links"]:
             continue
         pdf_key = e["links"]["attachment"]["href"][-8:]
-        pdf_path = find_pdf_file(f"{ZOTERO_PATH}/storage/{pdf_key}")
+        pdf_path = find_pdf_file(f"{zotero_path}/storage/{pdf_key}")
         ret.append(
             {
                 "key": e["key"],
@@ -103,12 +116,15 @@ def get_collections():
 
 def fulltext_search(rows: list, query: str, ignore_case: bool = False) -> list:
     check_cache(rows)  # Ensure cache is up to date
+    cache_dir = config["cache_dir"]
+    preview_length = config["preview_length"] // 2
+    preview_limit = config["preview_limit"]
     res = []
     for row in rows:
         key = row["key"]
         # title = row["title"]
         # pdf_path = row["path"]
-        cache_path = f"{CACHE_DIR}/{key}.txt"
+        cache_path = f"{cache_dir}/{key}.txt"
 
         with open(cache_path, "r", encoding="utf-8") as f:
             text = f.read()
@@ -119,9 +135,9 @@ def fulltext_search(rows: list, query: str, ignore_case: bool = False) -> list:
             for match in re.finditer(query, text, re.IGNORECASE if ignore_case else 0):
                 b = match.start()
                 c = match.end()
-                a = max(0, b - 100)
-                d = min(len(text), c + 100)
-                if len(preview) < PREVIEW_LIMIT:
+                a = max(0, b - preview_length)
+                d = min(len(text), c + preview_length)
+                if len(preview) < preview_limit:
                     preview.append(text[a:b] + f"<mark>{match.group()}</mark>" + text[c:d])
                 else:
                     break
@@ -242,7 +258,7 @@ def api_export_file(self: "Handler"):
     if file_path:
         file_path = file_path[0]
         logger.info(f"Exporting file: {file_path}")
-        shutil.copy(file_path, EXPORT_DIR)
+        shutil.copy(file_path, config["export_dir"])
     self.send_response(200)
     self.end_headers()
 
@@ -265,8 +281,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    address = "127.0.0.1"
-    port = 8088
+    address = config["address"]
+    port = config["port"]
     logger.info(f"Starting server on {address}:{port}")
     logger.info(f">>> http://127.0.0.1:{port}")
     server = HTTPServer((address, port), Handler)
@@ -274,7 +290,7 @@ def main():
 
 
 if __name__ == "__main__":
-    logging.getLogger().setLevel(logging.WARNING)
+    logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.WARNING)
     logger.setLevel(logging.INFO)
-    logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
+    check_config()
     main()

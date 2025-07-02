@@ -12,3 +12,4 @@ wheels/
 test.ipynb
 .cache
 export
+config.json
