@@ -142,7 +142,7 @@ def fulltext_search(rows: list, query: str, ignore_case: bool = False) -> list:
                 else:
                     break
             if preview:
-                row["preview"] = preview
+                row["preview"] = row.get("preview", []) + preview
                 res.append(row)
     logger.debug(f"Found {len(res)} rows matching the query '{query}'")
     return res
@@ -223,7 +223,10 @@ def api_search(self: "Handler"):
     rows = list(rows.values())
     logger.info(f"Found {len(rows)} items in selected collections.")
 
-    rows = fulltext_search(rows, query[0], ignore_case)
+    for query in query[0].split("&&"):
+        logger.info(f"Searching for query: {query}")
+        rows = fulltext_search(rows, query, ignore_case)
+
     results = ""
     for r in rows:
         key = r["key"]
